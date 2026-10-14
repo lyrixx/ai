@@ -43,14 +43,19 @@ final class Store implements ManagedStoreInterface, StoreInterface
     }
 
     /**
+     * The "index_opclass" option defaults to the operator class of the store distance: a different
+     * one would prevent the queries from using the index.
+     *
      * @param array{vector_type?: string, vector_size?: positive-int, index_method?: string, index_opclass?: string} $options
      *
      * Good configuration $options are:
      * - For Mistral: ['vector_size' => 1024]
-     * - For Gemini: ['vector_type' => 'halfvec', 'vector_size' => 3072, 'index_method' => 'hnsw', 'index_opclass' => 'halfvec_cosine_ops']
+     * - For Gemini: ['vector_type' => 'halfvec', 'vector_size' => 3072]
      */
     public function setup(array $options = []): void
     {
+        $vectorType = $options['vector_type'] ?? 'vector';
+
         $this->connection->exec('CREATE EXTENSION IF NOT EXISTS vector');
 
         $this->connection->exec(
@@ -62,7 +67,7 @@ final class Store implements ManagedStoreInterface, StoreInterface
                 )',
                 $this->tableName,
                 $this->vectorFieldName,
-                $options['vector_type'] ?? 'vector',
+                $vectorType,
                 $options['vector_size'] ?? 1536,
             ),
         );
@@ -72,9 +77,15 @@ final class Store implements ManagedStoreInterface, StoreInterface
                 $this->tableName,
                 $this->vectorFieldName,
                 $this->tableName,
-                $options['index_method'] ?? 'ivfflat',
+                // Unlike ivfflat, hnsw needs no data to build a good index, and supports every distance
+                $options['index_method'] ?? 'hnsw',
                 $this->vectorFieldName,
-                $options['index_opclass'] ?? 'vector_cosine_ops',
+                $options['index_opclass'] ?? \sprintf('%s_%s_ops', $vectorType, match ($this->distance) {
+                    Distance::Cosine => 'cosine',
+                    Distance::InnerProduct => 'ip',
+                    Distance::L1 => 'l1',
+                    Distance::L2 => 'l2',
+                }),
             ),
         );
     }

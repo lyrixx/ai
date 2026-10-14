@@ -131,6 +131,10 @@ The table and index are created by ``setup()``::
 
 **Available distances:** ``Distance::Cosine``, ``Distance::InnerProduct``, ``Distance::L1``, ``Distance::L2`` (default)
 
+``setup()`` creates an HNSW index with the operator class of the distance (e.g. ``vector_cosine_ops``
+for ``Distance::Cosine``): queries can only use an index built for their distance. The
+``index_method`` and ``index_opclass`` setup options override them.
+
 .. code-block:: yaml
 
     # config/packages/ai.yaml
@@ -146,8 +150,6 @@ The table and index are created by ``setup()``::
                     distance: 'cosine'
                     setup_options:
                         vector_size: 1536
-                        index_method: 'hnsw'
-                        index_opclass: 'vector_cosine_ops'
 
 This store also supports hybrid vector and full-text search via
 :class:`Symfony\\AI\\Store\\Query\\HybridQuery`, which uses the configured ``lang`` for the
